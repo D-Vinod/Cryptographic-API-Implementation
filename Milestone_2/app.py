@@ -113,8 +113,8 @@ async def encrypt(request: EncryptionRequest):
             public_key.encrypt(
                 plaintext.encode(),
                 padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
+                    mgf=padding.MGF1(algorithm=hashes.SHA512()),
+                    algorithm=hashes.SHA512(),
                     label=None
                 )
             )
@@ -175,8 +175,8 @@ async def decrypt(request: DecryptionRequest):
             plaintext = key.decrypt(
                 base64.b64decode(ciphertext),
                 padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
+                    mgf=padding.MGF1(algorithm=hashes.SHA512()),
+                    algorithm=hashes.SHA512(),
                     label=None
                 )
             ).decode()
