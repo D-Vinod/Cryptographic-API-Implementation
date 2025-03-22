@@ -6,7 +6,7 @@ from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.asymmetric import padding
 from pydantic import BaseModel
 import os
 import base64
@@ -55,12 +55,17 @@ async def generate_key(request: KeyGenerationRequest):
     if key_type == "AES":
         key_value = base64.b64encode(key).decode()
     elif key_type == "RSA":
-        key_value = base64.b64encode(key.private_bytes(
+        private_key_pem = key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.PKCS8,
             encryption_algorithm=serialization.NoEncryption()
-        )).decode()
-    
+        )
+        public_key_pem = key.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        return {"key_id": key_id, "private_key": base64.b64encode(private_key_pem).decode(), "public_key": base64.b64encode(public_key_pem).decode()}
+
     return {"key_id": key_id, "key_value": key_value}
 
 # EncryptionRequest model
@@ -69,7 +74,11 @@ class EncryptionRequest(BaseModel):
     plaintext: str
     algorithm: str
 
-# Update the endpoint to use the request body
+class EncryptionRequest(BaseModel):
+    key_id: str
+    plaintext: str
+    algorithm: str
+
 @app.post("/encrypt")
 async def encrypt(request: EncryptionRequest):
     logger.info(f"Encrypting message with key_id: {request.key_id}")
@@ -96,10 +105,25 @@ async def encrypt(request: EncryptionRequest):
         # Encrypt the data
         ciphertext = encryptor.update(padded_data) + encryptor.finalize()
         ciphertext = base64.b64encode(iv + ciphertext).decode()  # Include IV in the output
+
+    elif algorithm == "RSA":
+        # RSA encryption uses the **public key** to encrypt
+        public_key = key.public_key()
+        ciphertext = base64.b64encode(
+            public_key.encrypt(
+                plaintext.encode(),
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+            )
+        ).decode()
     else:
         raise HTTPException(status_code=400, detail="Unsupported algorithm")
     
     return {"ciphertext": ciphertext}
+
 
 # DecryptionRequest model
 class DecryptionRequest(BaseModel):
@@ -107,7 +131,6 @@ class DecryptionRequest(BaseModel):
     ciphertext: str
     algorithm: str
 
-# Update the endpoint to use the request body
 @app.post("/decrypt")
 async def decrypt(request: DecryptionRequest):
     logger.info(f"Decrypting message with key_id: {request.key_id}")
@@ -145,6 +168,21 @@ async def decrypt(request: DecryptionRequest):
             plaintext = plaintext.decode()
         except (ValueError, binascii.Error) as e:
             raise HTTPException(status_code=400, detail=f"Decryption failed: {str(e)}")
+
+    elif algorithm == "RSA":
+        try:
+            # RSA decryption uses the **private key** to decrypt
+            plaintext = key.decrypt(
+                base64.b64decode(ciphertext),
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+            ).decode()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"RSA decryption failed: {str(e)}")
+
     else:
         raise HTTPException(status_code=400, detail="Unsupported algorithm")
     
