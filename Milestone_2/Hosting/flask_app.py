@@ -73,7 +73,7 @@ def generate_key():
                 encoding=serialization.Encoding.PEM,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo
             )
-            return {"key_id": key_id, "private_key": base64.b64encode(private_key_pem).decode(), "public_key": base64.b64encode(public_key_pem).decode()}
+            return jsonify({"key_id": key_id, "private_key": base64.b64encode(private_key_pem).decode(), "public_key": base64.b64encode(public_key_pem).decode()})
 
         return jsonify({"key_id": key_id, "key_value": key_value})
 
