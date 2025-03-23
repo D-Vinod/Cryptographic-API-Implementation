@@ -123,11 +123,11 @@ BASE_URL = "https://pase.pythonanywhere.com"
 ```
 
 For the required function you can use following as **url** to POST requests. Make sure that your json is in the correct format as mentioned above.
-- **Hashing** `url = f"{ BASE_URL }/generate-hash`
-- **Verify hash** `url = f"{ BASE_URL }/verify-hash`
-- **Key generation** `url = f"{ BASE_URL }/generate-key`
-- **Encryption** `url = f"{ BASE_URL }/encrypt`
-- **Decryption** `url = f"{ BASE_URL }/decrypt`
+- **Hashing** `url_hashgen = f"{ BASE_URL }/generate-hash`
+- **Verify hash** `url_verify = f"{ BASE_URL }/verify-hash`
+- **Key generation** `url_keygen = f"{ BASE_URL }/generate-key`
+- **Encryption** `url_enc = f"{ BASE_URL }/encrypt`
+- **Decryption** `url_dec = f"{ BASE_URL }/decrypt`
 
 Then create the **json** file as mentioned above (ex: `data {"key_type": "RSA", "key_size": 2048 }}`) depending on your request. And finally post the request as,
 
