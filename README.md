@@ -151,4 +151,4 @@ Feel free to use, modify, and share this code however you like!
 
 ---
 
-**Alohomora!🪄** Unlock the possibilities and let the magic begin🔓🔮✨
+**Alohomora!🪄** Unlock with your private key and let the magic begin🔓🔮✨
