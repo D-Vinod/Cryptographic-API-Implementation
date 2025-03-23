@@ -1,12 +1,11 @@
-#dilupa chaged
-
 from fastapi import FastAPI, HTTPException
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric import padding as rsa_padding
+from cryptography.hazmat.primitives import padding as aes_padding
 from pydantic import BaseModel
 import os
 import base64
@@ -42,6 +41,7 @@ async def generate_key(request: KeyGenerationRequest):
         if key_size not in [128, 192, 256]:
             raise HTTPException(status_code=400, detail="Invalid key size for AES")
         key = os.urandom(key_size // 8)  # Generate random bytes for AES key
+
     elif key_type == "RSA":
         if key_size not in [2048, 3072, 4096]:
             raise HTTPException(status_code=400, detail="Invalid key size for RSA")
@@ -54,6 +54,7 @@ async def generate_key(request: KeyGenerationRequest):
     # Serialize and encode the key in Base64
     if key_type == "AES":
         key_value = base64.b64encode(key).decode()
+        
     elif key_type == "RSA":
         private_key_pem = key.private_bytes(
             encoding=serialization.Encoding.PEM,
@@ -99,7 +100,7 @@ async def encrypt(request: EncryptionRequest):
         encryptor = cipher.encryptor()
         
         # Pad the plaintext to match block size
-        padder = padding.PKCS7(algorithms.AES.block_size).padder()
+        padder = aes_padding.PKCS7(algorithms.AES.block_size).padder()
         padded_data = padder.update(plaintext.encode()) + padder.finalize()
         
         # Encrypt the data
@@ -112,10 +113,10 @@ async def encrypt(request: EncryptionRequest):
         ciphertext = base64.b64encode(
             public_key.encrypt(
                 plaintext.encode(),
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA512()),
-                    algorithm=hashes.SHA512(),
-                    label=None
+                rsa_padding.OAEP(
+                    mgf = rsa_padding.MGF1(algorithm=hashes.SHA512()),
+                    algorithm = hashes.SHA512(),
+                    label = None
                 )
             )
         ).decode()
@@ -163,7 +164,7 @@ async def decrypt(request: DecryptionRequest):
             padded_plaintext = decryptor.update(ciphertext) + decryptor.finalize()
             
             # Unpad the plaintext
-            unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+            unpadder = aes_padding.PKCS7(algorithms.AES.block_size).unpadder()
             plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
             plaintext = plaintext.decode()
         except (ValueError, binascii.Error) as e:
@@ -174,10 +175,10 @@ async def decrypt(request: DecryptionRequest):
             # RSA decryption uses the **private key** to decrypt
             plaintext = key.decrypt(
                 base64.b64decode(ciphertext),
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA512()),
-                    algorithm=hashes.SHA512(),
-                    label=None
+                rsa_padding.OAEP(
+                    mgf = rsa_padding.MGF1(algorithm=hashes.SHA512()),
+                    algorithm = hashes.SHA512(),
+                    label = None
                 )
             ).decode()
         except Exception as e:
