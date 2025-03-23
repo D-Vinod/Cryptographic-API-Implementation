@@ -4,7 +4,7 @@ Includes key generation, encryption and decryption.
 Includes hash generation and hash verification.
 
 # Hosting
-Contains the Fkask application code for running the cryptographic API on [Web host](https://pase.pythonanywhere.com/). 
+Contains the Flask application code for running the cryptographic API on [Web host](https://pase.pythonanywhere.com/). 
 Includes key generation, encryption and decryption.
 Includes hash generation and hash verification.
 
