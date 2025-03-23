@@ -21,7 +21,7 @@ keys_store = {}
 
 @app.route('/')
 def hello_world():
-    return 'Harry Potter, The Boy Who Lived.!!'
+    return 'Hosting for EN4720 - Course Project, Milestone 2: Cryptographic API Implementation'
 
 @app.route("/generate-key", methods=["POST"])
 def generate_key():
@@ -39,7 +39,6 @@ def generate_key():
             if key_size not in [128, 192, 256]:
                 return jsonify({"error": "Invalid key size for AES"}), 400
             key = os.urandom(key_size // 8)
-            
         elif key_type == "RSA":
             if key_size not in [2048, 3072, 4096]:
                 return jsonify({"error": "Invalid key size for RSA"}), 400
