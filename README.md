@@ -140,7 +140,15 @@ print(response.json())
 🔗 **GitHub Repository:** [https://github.com/D-Vinod/Cryptographic-API-Implementation](https://github.com/D-Vinod/Cryptographic-API-Implementation)
 
 ## Contributors
-- **Amarasekara A.T.P.** ([https://github.com/thisariii01](https://github.com/thisariii01))
-- **Bandara D.M.D.V.** ([https://github.com/D-Vinod](https://github.com/D-Vinod))
-- **Samarasekera A.M.P.S.** ([https://github.com/PaSe-Sam](https://github.com/PaSe-Sam))
-- **Wijetunga W.L.N.K.** ([https://github.com/namiwijeuom](https://github.com/namiwijeuom})
+- 🧙‍♀️**Amarasekara A.T.P.** ([https://github.com/thisariii01](https://github.com/thisariii01))
+- 🧙‍♂️**Bandara D.M.D.V.** ([https://github.com/D-Vinod](https://github.com/D-Vinod))
+- 🧙‍♂️**Samarasekera A.M.P.S.** ([https://github.com/PaSe-Sam](https://github.com/PaSe-Sam))
+- 🧙‍♂️**Wijetunga W.L.N.K.** ([https://github.com/namiwijeuom](https://github.com/namiwijeuom})
+
+## License `WTFPL`
+
+Feel free to use, modify, and share this code however you like!
+
+---
+
+**Alohomora!🪄** Unlock the possibilities and let the magic begin🔓🔮✨
