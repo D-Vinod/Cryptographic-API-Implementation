@@ -25,11 +25,15 @@ keys_store = {}
 def hello_world():
     return 'Hosting for EN4720 - Course Project, Milestone 2: Cryptographic API Implementation'
 
+##########################################################################################################################################################
+# Generate either an AES or RSA key based on the request data
+
 # KeyGenerationRequest model
 class KeyGenerationRequest(BaseModel):
     key_type: str
     key_size: int
 
+# Key Generation Endpoint
 @app.route("/generate-key", methods=["POST"])
 def generate_key():
     try:
@@ -40,7 +44,7 @@ def generate_key():
         logger.info(f"Generating key with type: {key_type} of size: {key_size}.")
 
         if key_type not in ["AES", "RSA"]:
-            return jsonify({"error": "Unsupported key type."}), 400
+            return jsonify({"key_type_error": "Unsupported key type in key generation."}), 400
 
         if key_type == "AES":
             if key_size not in [128, 192, 256]:
@@ -61,28 +65,32 @@ def generate_key():
 
         elif key_type == "RSA":
             private_key_pem = key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
             )
             public_key_pem = key.public_key().public_bytes(
                 encoding=serialization.Encoding.PEM,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo
             )
-            return {"key_id": key_id, "private_key": base64.b64encode(private_key_pem).decode(), "public_key": base64.b64encode(public_key_pem).decode()}
+            return jsonify({"key_id": key_id, "private_key": base64.b64encode(private_key_pem).decode(), "public_key": base64.b64encode(public_key_pem).decode()})
 
         return jsonify({"key_id": key_id, "key_value": key_value})
 
     except Exception as e:
         logger.error(f"Error with key generation - {e}.")
-        return jsonify({"error": "Internal error."}), 500
+        return jsonify({"Fatal_error": f"Internal Error with key generation. {str(e)}"}), 500
 
+##########################################################################################################################################################
+# Encrypt the plaintext using the specified key and algorithm
+    
 # EncryptionRequest model
 class EncryptionRequest(BaseModel):
     key_id: str
     plaintext: str
     algorithm: str
 
+# Encryption Endpoint
 @app.route("/encrypt", methods=["POST"])
 def encrypt():
     try:
@@ -94,7 +102,7 @@ def encrypt():
         logger.info(f"Encrypting message with key_id: {key_id}.")
 
         if key_id not in keys_store:
-            return jsonify({"error": "Key not available."}), 404
+           return jsonify({"Key_id_error": "Key not available."}), 404
 
         key = keys_store[key_id]
 
@@ -109,11 +117,22 @@ def encrypt():
             padded_data = padder.update(plaintext.encode()) + padder.finalize()
 
             # Encrypt the data
-            ciphertext = encryptor.update(padded_data) + encryptor.finalize()
-            ciphertext = base64.b64encode(iv + ciphertext).decode()
+            ciphertext_bytes = encryptor.update(padded_data) + encryptor.finalize()
+            ciphertext = base64.b64encode(iv + ciphertext_bytes).decode()
 
         elif algorithm == "RSA":
-            # RSA encryption uses the **public key** to encrypt
+
+            '''Calculate the max plaintext size for RSA encryption as RSA has a limit 
+            on the size of plaintext that can be encrypted depending on the key size'''
+            public_key = key.public_key()  # Get the RSA public key
+            key_size_bytes = public_key.key_size // 8  # Convert key size from bits to bytes
+            hash_size = hashes.SHA512().digest_size  # Get SHA-512 hash size in bytes
+            padding_overhead = 2 * hash_size + 2  # OAEP padding overhead
+            max_size = key_size_bytes - padding_overhead  # Compute max plaintext size
+            if len(plaintext.encode()) > max_size:
+                return jsonify({"RSA_plaintext_size_error": f"Message too long! Max size for RSA with key size {key_size_bytes * 8} is {max_size} bits. Provided plaintext is {len(plaintext.encode())} bits."}), 413
+
+            # RSA encryption uses the public key to encrypt
             public_key = key.public_key()
             ciphertext = base64.b64encode(
                 public_key.encrypt(
@@ -127,20 +146,24 @@ def encrypt():
             ).decode()
 
         else:
-            return jsonify({"error": "Unsupported algorithm."}), 400
+            return jsonify({"encrypt_algorithm_error": "Unsupported algorithm."}), 400
 
         return jsonify({"ciphertext": ciphertext})
 
     except Exception as e:
         logger.error(f"Error in encryption - {e}.")
-        return jsonify({"error": "Encryption failed."}), 500
+        return jsonify({"Fatal error": f"Encryption failed: {str(e)}."}), 500
 
+##########################################################################################################################################################
+# Decrypt the ciphertext using the specified key and algorithm
+    
 # DecryptionRequest model
 class DecryptionRequest(BaseModel):
     key_id: str
     ciphertext: str
     algorithm: str
 
+# Decryption Endpoint
 @app.route("/decrypt", methods=["POST"])
 def decrypt():
     try:
@@ -152,7 +175,7 @@ def decrypt():
         logger.info(f"Decrypting message with key_id: {key_id}.")
 
         if key_id not in keys_store:
-            return jsonify({"error": "Key not found."}), 404
+            return jsonify({"Key_id_error": "Key not available."}), 404
 
         key = keys_store[key_id]
 
@@ -176,7 +199,7 @@ def decrypt():
 
         elif algorithm == "RSA":
             try:
-                # RSA decryption uses the **private key** to decrypt
+                # RSA decryption uses the private key to decrypt
                 plaintext = key.decrypt(
                     base64.b64decode(ciphertext),
                     rsa_padding.OAEP(
@@ -186,21 +209,25 @@ def decrypt():
                     )
                 ).decode()
             except Exception as e:
-                return jsonify({"error": f"RSA decryption failed: {str(e)}."}), 400
+                return jsonify({"Fatal error": f"RSA decryption failed: {str(e)}."}), 500
 
         else:
-            return jsonify({"error": "Unsupported algorithm"}), 400
+            return jsonify({"decrypt_algorithm_error": "Unsupported algorithm."}), 400
 
         return jsonify({"plaintext": plaintext})
 
     except (ValueError, binascii.Error) as e:
-        return jsonify({"error": f"Decryption failed: {str(e)}"}), 400
+        return jsonify({"Fatal error": f"Decryption failed: {str(e)}"}), 500
 
+##########################################################################################################################################################
+# Generate a hash of the data using the specified algorithm
+        
 # HashGeneration model
 class HashGeneration(BaseModel):
     data: str
     algorithm: str
 
+# Hash Generation Endpoint
 @app.route("/generate-hash", methods=["POST"])
 def generate_hash():
     try:
@@ -211,7 +238,7 @@ def generate_hash():
         logger.info(f"Generating Hash using Algorithm: {algorithm}")
 
         if algorithm not in ["SHA-256", "SHA-512"]:
-            return jsonify({"error": "Unsupported hashing algorithm"}), 400
+            return jsonify({"hashing_algorithm_error": "Unsupported hashing algorithm"}), 400
 
         if algorithm == "SHA-256":
             digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
@@ -225,8 +252,11 @@ def generate_hash():
 
     except Exception as e:
         logger.error(f"Hash generation error: {e}")
-        return jsonify({"error": "Hash generation failed"}), 500
+        return jsonify({"Fatal error": f"Hash generation failed: {str(e)}"}), 500
 
+##########################################################################################################################################################
+# Verify if the provided hash matches the hash computed from the data using the specified algorithm
+    
 # HashVerification model
 class HashVerification(BaseModel):
     data: str
@@ -245,7 +275,7 @@ def verify_hash():
         logger.info(f"Verifying hash: {hash_value}")
 
         if algorithm not in ["SHA-256", "SHA-512"]:
-            return jsonify({"error": "Unsupported hashing algorithm"}), 400
+            return jsonify({"hashing_algorithm_error": "Unsupported hashing algorithm"}), 400
 
         if algorithm == "SHA-256":
             digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
@@ -262,8 +292,10 @@ def verify_hash():
 
     except Exception as e:
         logger.error(f"Hash verification error: {e}")
-        return jsonify({"error": "Hash verification failed"}), 500
+        return jsonify({"Fatal error": f"Hash verification failed : {str(e)}"}), 500
 
+##########################################################################################################################################################
+    
 # Run the API
 if __name__ == "__main__":
     app.run(debug=True)
