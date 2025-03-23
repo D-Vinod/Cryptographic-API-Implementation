@@ -283,6 +283,8 @@ def verify_hash():
         logger.error(f"Hash verification error: {e}")
         return jsonify({"error": "Hash verification failed"}), 500
 
+##########################################################################################################################################################
+    
 # Run the API
 if __name__ == "__main__":
     app.run(debug=True)
