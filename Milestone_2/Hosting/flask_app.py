@@ -25,11 +25,15 @@ keys_store = {}
 def hello_world():
     return 'Hosting for EN4720 - Course Project, Milestone 2: Cryptographic API Implementation'
 
+##########################################################################################################################################################
+# Generate either an AES or RSA key based on the request data
+
 # KeyGenerationRequest model
 class KeyGenerationRequest(BaseModel):
     key_type: str
     key_size: int
 
+# Key Generation Endpoint
 @app.route("/generate-key", methods=["POST"])
 def generate_key():
     try:
@@ -61,9 +65,9 @@ def generate_key():
 
         elif key_type == "RSA":
             private_key_pem = key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
             )
             public_key_pem = key.public_key().public_bytes(
                 encoding=serialization.Encoding.PEM,
@@ -77,12 +81,16 @@ def generate_key():
         logger.error(f"Error with key generation - {e}.")
         return jsonify({"error": "Internal error."}), 500
 
+##########################################################################################################################################################
+# Encrypt the plaintext using the specified key and algorithm
+    
 # EncryptionRequest model
 class EncryptionRequest(BaseModel):
     key_id: str
     plaintext: str
     algorithm: str
 
+# Encryption Endpoint
 @app.route("/encrypt", methods=["POST"])
 def encrypt():
     try:
@@ -109,11 +117,11 @@ def encrypt():
             padded_data = padder.update(plaintext.encode()) + padder.finalize()
 
             # Encrypt the data
-            ciphertext = encryptor.update(padded_data) + encryptor.finalize()
-            ciphertext = base64.b64encode(iv + ciphertext).decode()
+            ciphertext_bytes = encryptor.update(padded_data) + encryptor.finalize()
+            ciphertext = base64.b64encode(iv + ciphertext_bytes).decode()
 
         elif algorithm == "RSA":
-            # RSA encryption uses the **public key** to encrypt
+            # RSA encryption uses the public key to encrypt
             public_key = key.public_key()
             ciphertext = base64.b64encode(
                 public_key.encrypt(
@@ -135,12 +143,16 @@ def encrypt():
         logger.error(f"Error in encryption - {e}.")
         return jsonify({"error": "Encryption failed."}), 500
 
+##########################################################################################################################################################
+# Decrypt the ciphertext using the specified key and algorithm
+    
 # DecryptionRequest model
 class DecryptionRequest(BaseModel):
     key_id: str
     ciphertext: str
     algorithm: str
 
+# Decryption Endpoint
 @app.route("/decrypt", methods=["POST"])
 def decrypt():
     try:
@@ -176,7 +188,7 @@ def decrypt():
 
         elif algorithm == "RSA":
             try:
-                # RSA decryption uses the **private key** to decrypt
+                # RSA decryption uses the private key to decrypt
                 plaintext = key.decrypt(
                     base64.b64decode(ciphertext),
                     rsa_padding.OAEP(
@@ -196,11 +208,15 @@ def decrypt():
     except (ValueError, binascii.Error) as e:
         return jsonify({"error": f"Decryption failed: {str(e)}"}), 400
 
+##########################################################################################################################################################
+# Generate a hash of the data using the specified algorithm
+        
 # HashGeneration model
 class HashGeneration(BaseModel):
     data: str
     algorithm: str
 
+# Hash Generation Endpoint
 @app.route("/generate-hash", methods=["POST"])
 def generate_hash():
     try:
@@ -227,6 +243,9 @@ def generate_hash():
         logger.error(f"Hash generation error: {e}")
         return jsonify({"error": "Hash generation failed"}), 500
 
+##########################################################################################################################################################
+# Verify if the provided hash matches the hash computed from the data using the specified algorithm
+    
 # HashVerification model
 class HashVerification(BaseModel):
     data: str
